@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .player-container {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 1289px;
+            height: 800px;
+            text-align: center;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .waveform {
+            height: 50px;
+            background: #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .settings {
+            margin-top: 10px;
+        }
+        .settings select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .upload {
+            margin-top: 10px;
+        }
+        .upload input {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .playlist {
+            margin-top: 10px;
+            text-align: left;
+            max-height: 300px; /* Adjust as needed */
+            overflow-y: auto;
+        }
+        .playlist ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .playlist li {
+            cursor: pointer;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            white-space: normal; /* Allow text to wrap */
+            overflow: hidden;
+            text-overflow: ellipsis; /* Add ellipsis for overflowed text */
+        }
+        .playlist li:hover {
+            background: #e0e0e0;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .credit {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+        .credit a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .credit a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <div class="waveform" id="waveform">[Waveform]</div>
+        <div class="controls">
+            <button class="button" id="prev">Previous</button>
+            <button class="button" id="backward">Backward 10s</button>
+            <button class="button" id="play">Play</button>
+            <button class="button" id="forward">Forward 10s</button>
+            <button class="button" id="next">Next</button>
+        </div>
+        <div class="settings">
+            <label for="speed">Playback Speed:</label>
+            <select id="speed">
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+            </select>
+        </div>
+        <div class="upload">
+            <label for="file-upload">Upload Audio:</label>
+            <input type="file" id="file-upload" accept="audio/mp3" multiple>
+        </div>
+        <div class="playlist" id="playlist">
+            <h3>Playlist</h3>
+            <ul id="song-list">
+                <!-- Dynamic song list will be inserted here -->
+            </ul>
+        </div>
+        <audio id="audio" controls></audio>
+        <div class="credit">
+            Created by <a href="https://www.instagram.com/__kaushalkumar__/" target="_blank">@__kaushalkumar__</a>
+        </div>
+    </div>
+
+    <script>
+        const audio = document.getElementById('audio');
+        const playButton = document.getElementById('play');
+        const nextButton = document.getElementById('next');
+        const prevButton = document.getElementById('prev');
+        const forwardButton = document.getElementById('forward');
+        const backwardButton = document.getElementById('backward');
+        const speedSelect = document.getElementById('speed');
+        const fileUpload = document.getElementById('file-upload');
+        const songList = document.getElementById('song-list');
+        let currentTrackIndex = -1;
+        let tracks = JSON.parse(localStorage.getItem('tracks')) || [];
+        let trackNames = JSON.parse(localStorage.getItem('trackNames')) || [];
+
+        function playAudio() {
+            if (audio.paused) {
+                audio.play();
+                playButton.textContent = 'Pause';
+            } else {
+                audio.pause();
+                playButton.textContent = 'Play';
+            }
+        }
+
+        function changeTrack(offset) {
+            if (tracks.length === 0) return;
+            currentTrackIndex += offset;
+            if (currentTrackIndex < 0) currentTrackIndex = 0;
+            if (currentTrackIndex >= tracks.length) currentTrackIndex = tracks.length - 1;
+            audio.src = tracks[currentTrackIndex];
+            audio.play();
+            playButton.textContent = 'Pause';
+        }
+
+        function changeSpeed() {
+            audio.playbackRate = parseFloat(speedSelect.value);
+        }
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (files.length) {
+                for (const file of files) {
+                    const url = URL.createObjectURL(file);
+                    tracks.push(url);
+                    trackNames.push(file.name);
+                }
+                localStorage.setItem('tracks', JSON.stringify(tracks));
+                localStorage.setItem('trackNames', JSON.stringify(trackNames));
+                updatePlaylist();
+            }
+        }
+
+        function updatePlaylist() {
+            songList.innerHTML = '';
+            trackNames.forEach((name, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    ${name}
+                    <button class="delete-btn" onclick="deleteTrack(${index})">Delete</button>
+                `;
+                li.onclick = () => {
+                    audio.src = tracks[index];
+                    audio.play();
+                    playButton.textContent = 'Pause';
+                    currentTrackIndex = index;
+                };
+                songList.appendChild(li);
+            });
+        }
+
+        function deleteTrack(index) {
+            tracks.splice(index, 1);
+            trackNames.splice(index, 1);
+            localStorage.setItem('tracks', JSON.stringify(tracks));
+            localStorage.setItem('trackNames', JSON.stringify(trackNames));
+            updatePlaylist();
+            if (currentTrackIndex >= index) {
+                currentTrackIndex--;
+                if (currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
+                    audio.src = tracks[currentTrackIndex];
+                    audio.play();
+                    playButton.textContent = 'Pause';
+                }
+            }
+        }
+
+        playButton.addEventListener('click', playAudio);
+        nextButton.addEventListener('click', () => changeTrack(1));
+        prevButton.addEventListener('click', () => changeTrack(-1));
+        forwardButton.addEventListener('click', () => audio.currentTime += 10);
+        backwardButton.addEventListener('click', () => audio.currentTime -= 10);
+        speedSelect.addEventListener('change', changeSpeed);
+        fileUpload.addEventListener('change', handleFileUpload);
+
+        updatePlaylist(); // Initialize playlist from local storage
+    </script>
+</body>
+</html>
